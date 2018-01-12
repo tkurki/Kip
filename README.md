@@ -1,6 +1,6 @@
 # Kip
 
-This is an instrumentation package to display signalK data. Display can be split up in any arrangement to show all data available on the server.
+This is an instrumentation package to display Signal K data. Display can be split up in any arrangement to show all data available on the server.
 
 ## Design Goal
 
@@ -24,7 +24,7 @@ The app is an Angular-cli app. Install dependencies with `npm install`. Then run
 * Redo conversion service
   * Know at least which type of unit it should be. (either with meta or hard coded/derived from schema)
   * Default unit for each unit type in config.
-* Show SignalK status/alert if disconnected
+* Show Signal K status/alert if disconnected
 * Radial/Linear Gauge Zones
 
 ### V0.3
