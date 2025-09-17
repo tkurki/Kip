@@ -1,7 +1,7 @@
 {
   "name": "@mxtommy/kip",
   "version": "3.12.0-history",
-  "description": "An advanced and versatile marine instrumentation package to display Signal K data.",
+  "description": "FORK: An advanced and versatile marine instrumentation package to display Signal K data - with History API support",
   "license": "MIT",
   "author": {
     "name": "Thomas St.Pierre, David Godin"
@@ -46,7 +46,7 @@
     "dev": "ng serve --configuration=dev --serve-path=/@mxtommy/kip/",
     "build:plugin": "tsc -p ./kip-plugin/tsconfig.plugin.json",
     "build:dev": "ng build --configuration=dev",
-    "build:prod": "ng build --configuration=production",
+    "build:prod": "ng build --configuration=production && git add -f public/*",
     "build:all": "npm run build:plugin && npm run build:prod",
     "e2e": "ng e2e"
   },
