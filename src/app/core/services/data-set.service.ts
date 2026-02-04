@@ -2,6 +2,7 @@ import { Injectable, inject, OnDestroy } from '@angular/core';
 import { Subscription, Observable, ReplaySubject, withLatestFrom, concat, skip, from, filter, merge, shareReplay, take, timer } from 'rxjs';
 import { AppSettingsService } from './app-settings.service';
 import { DataService, IPathUpdate } from './data.service';
+import { HistoryService } from './history.service';
 import { UUID } from '../utils/uuid.util'
 import { cloneDeep } from 'lodash-es';
 import { NgGridStackWidget } from 'gridstack/dist/angular';
@@ -59,10 +60,13 @@ type AngleDomain = 'scalar' | 'direction' | 'signed';
 export class DatasetService implements OnDestroy {
   private appSettings = inject(AppSettingsService);
   private data = inject(DataService);
+  private history = inject(HistoryService);
 
   private _svcDatasetConfigs: IDatasetServiceDatasetConfig[] = [];
   private _svcDataSource: IDatasetServiceDataSource[] = [];
   private _svcSubjectObserverRegistry: IDatasetServiceObserverRegistration[] = [];
+  private _historyApiChecked = false;
+  private _historyApiAvailable = false;
 
   // List of Signal K paths that should be interpreted as signed angles (-π, π].
   // Add your specific paths here. All other radian paths will default to direction domain [0, 2π).
@@ -261,9 +265,81 @@ export class DatasetService implements OnDestroy {
       `[Dataset Service] Starting recording process: ${configuration.path}, Scale: ${configuration.timeScaleFormat}, Period: ${configuration.period}, Datapoints: ${newDataSourceConfig.maxDataPoints}`
     );
 
+    // Check for history API availability and fetch historical data if available
+    if (!this._historyApiChecked) {
+      this._historyApiChecked = true;
+      this.history.checkHistoryApiAvailability().subscribe(available => {
+        this._historyApiAvailable = available;
+        this.startDataCollection(uuid, configuration, newDataSourceConfig, dataSource);
+      });
+    } else {
+      this.startDataCollection(uuid, configuration, newDataSourceConfig, dataSource);
+    }
+  }
+
+  /**
+   * Starts data collection for a dataset, optionally priming with historical data
+   * @private
+   */
+  private startDataCollection(
+    uuid: string,
+    configuration: IDatasetServiceDatasetConfig,
+    newDataSourceConfig: IDatasetServiceDataSource,
+    dataSource: IDatasetServiceDataSource
+  ): void {
     // Decide how to interpret the dataset values (scalar vs radian domains)
     const angleDomain = this.resolveAngleDomain(configuration.path, configuration.baseUnit);
 
+    // If history API is available, fetch historical data first
+    if (this._historyApiAvailable) {
+      this.history.fetchHistoryData(configuration, newDataSourceConfig.maxDataPoints).subscribe(
+        historyDatapoints => {
+          if (historyDatapoints && historyDatapoints.length > 0) {
+            console.log(`[Dataset Service] Priming dataset ${uuid} with ${historyDatapoints.length} historical data points`);
+            
+            // Feed historical data into the dataset
+            const registry = this._svcSubjectObserverRegistry.find(reg => reg.datasetUuid === uuid);
+            if (registry) {
+              // Push historical values to historicalData array and emit to subject
+              historyDatapoints.forEach(datapoint => {
+                // Keep the array to specified size
+                if (dataSource.maxDataPoints > 0 && dataSource.historicalData.length >= dataSource.maxDataPoints) {
+                  dataSource.historicalData.shift();
+                }
+                dataSource.historicalData.push(datapoint.data.value);
+                
+                // Recalculate stats for each historical point and emit
+                const updatedDatapoint = this.updateDataset(dataSource, configuration.baseUnit, angleDomain);
+                registry.rxjsSubject.next(updatedDatapoint);
+              });
+            }
+          }
+          
+          // Start live data collection
+          this.startLiveDataCollection(configuration, newDataSourceConfig, dataSource, angleDomain);
+        },
+        error => {
+          console.warn(`[Dataset Service] Failed to fetch historical data for ${uuid}, starting live only:`, error);
+          // Start live data collection even if history fetch fails
+          this.startLiveDataCollection(configuration, newDataSourceConfig, dataSource, angleDomain);
+        }
+      );
+    } else {
+      // No history API available, just start live data collection
+      this.startLiveDataCollection(configuration, newDataSourceConfig, dataSource, angleDomain);
+    }
+  }
+
+  /**
+   * Starts live data collection (subscribing to Signal K path updates)
+   * @private
+   */
+  private startLiveDataCollection(
+    configuration: IDatasetServiceDatasetConfig,
+    newDataSourceConfig: IDatasetServiceDataSource,
+    dataSource: IDatasetServiceDataSource,
+    angleDomain: AngleDomain
+  ): void {
     // Share the latest non-null value so we can:
     // 1) emit immediately on first value (chart isn't blank)
     // 2) then emit periodically using the latest known value
