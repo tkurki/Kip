@@ -1,0 +1,4 @@
+node_modules/
+serverState/
+.npmrc
+resources-provider*

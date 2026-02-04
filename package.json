@@ -51,7 +51,9 @@
     "build:prod": "ng build --configuration=production",
     "build:all": "npm run build:plugin && npm run build:prod",
     "e2e": "ng e2e",
-    "generate:widget": "npx schematics ./tools/schematics/collection.json:create-host2-widget --dry-run=false"
+    "generate:widget": "npx schematics ./tools/schematics/collection.json:create-host2-widget --dry-run=false",
+    "history:server:start": "cd tools/history-api && docker-compose -f docker-compose.yml up -d",
+    "history:server:stop": "cd tools/history-api && docker-compose -f docker-compose.yml down"
   },
   "schematics": "tools/schematics/collection.json",
   "devDependencies": {
