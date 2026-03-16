@@ -138,9 +138,7 @@ export class SqliteHistoryStorageService {
    */
   public configure(): ISqliteHistoryStorageConfig {
     this.initialized = false;
-    const databaseFile = this.dataDirPath
-      ? join(this.dataDirPath, 'historicalData', 'kip-history.sqlite')
-      : DEFAULT_STORAGE_CONFIG.databaseFile;
+    const databaseFile = join(this.dataDirPath, 'historicalData', 'kip-history.sqlite')
     this.config = {
       ...DEFAULT_STORAGE_CONFIG,
       databaseFile

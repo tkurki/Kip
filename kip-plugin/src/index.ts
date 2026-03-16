@@ -827,8 +827,7 @@ const start = (server: ServerAPI): Plugin => {
       if (!modeConfig.nodeSqliteAvailable) {
         server.error(`[KIP][RUNTIME] node:sqlite unavailable. ${runtimeSqliteUnavailableMessage}`);
       }
-      const serverWithApp = server as ServerAPI & { app?: { getDataDirPath?: () => string } };
-      const dataDirPath = serverWithApp.app?.getDataDirPath?.();
+      const dataDirPath = server.getDataDirPath();
       storageService.setDataDirPath(typeof dataDirPath === 'string' ? dataDirPath : null);
       storageService.setRuntimeAvailability(modeConfig.nodeSqliteAvailable, runtimeSqliteUnavailableMessage ?? undefined);
       logRuntimeDependencyVersions();
